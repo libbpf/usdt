@@ -28,7 +28,7 @@ TEST_OUT=$TEST.act_out.txt
 $TEST -U > $TEST_USDTS_SPEC
 $readelf -n $TEST 2>/dev/null | $awk -f fetch-usdts.awk > $TEST_USDTS_OUT
 if ! $awk -f check-match.awk $TEST_USDTS_SPEC $TEST_USDTS_OUT; then
-	echo "USDT SPECS FAILURE:"
+	echo "USDT SPECS MISMATCH:"
 	echo "EXPECTED:"
 	cat $TEST_USDTS_SPEC
 	echo "ACTUAL:"
@@ -39,7 +39,7 @@ fi
 $TEST -t > $TEST_PRE_SPEC
 $TEST > $TEST_PRE_OUT
 if ! $awk -f check-match.awk $TEST_PRE_SPEC $TEST_PRE_OUT; then
-	echo "TEST PRE-ATTACH OUTPUT CHECK FAILURE:"
+	echo "TEST PRE-ATTACH OUTPUT MISMATCH:"
 	echo "EXPECTED:"
 	cat $TEST_PRE_SPEC
 	echo "ACTUAL:"
@@ -88,8 +88,24 @@ if [ -s "$TEST_BTSCRIPT" ]; then
 	sudo kill -INT -$bt_pgid 2>/dev/null
 
 	$awk '/STARTED!/ {flag=1; next} /DONE!/ {flag=0} flag' $TEST_BTOUT_RAW > $TEST_BTOUT
-	$awk -f check-match.awk $TEST_BTOUT_SPEC $TEST_BTOUT
+	if ! $awk -f check-match.awk $TEST_BTOUT_SPEC $TEST_BTOUT; then
+		echo "BPFTRACE OUTPUT MISMTACH:"
+		echo "BPFTRACE SCRIPT:"
+		cat "$TEST_BTSCRIPT"
+		echo "EXPECTED OUTPUT:"
+		cat "$TEST_BTOUT_SPEC"
+		echo "ACTUAL OUTPUT:"
+		cat "$TEST_BTOUT"
+		exit 1
+	fi
 
 	$TEST -T > $TEST_OUT_SPEC
-	$awk -f check-match.awk $TEST_OUT_SPEC $TEST_OUT
+	if ! $awk -f check-match.awk $TEST_OUT_SPEC $TEST_OUT; then
+		echo "TEST ATTACHED OUTPUT MISMATCH:"
+		echo "EXPECTED:"
+		cat $TEST_OUT_SPEC
+		echo "ACTUAL:"
+		cat $TEST_OUT
+		exit 1
+	fi
 fi

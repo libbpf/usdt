@@ -3,6 +3,7 @@ AWK ?= awk
 READELF ?= readelf
 BPFTRACE ?= bpftrace
 OUTPUT ?= .output
+SHARED ?= 0
 
 export AWK READELF BPFTRACE
 
@@ -21,27 +22,44 @@ ifeq ($(OUTPUT),)
 $(error OUTPUT variable cannot be empty)
 endif
 
+ifeq ($(SHARED),1)
+CFLAGS += -fPIC
+CXXFLAGS += -fPIC
+OBJDIR := $(OUTPUT)/shared
+else
+OBJDIR := $(OUTPUT)/static
+endif
+
+
 NONTESTS = tester common
 
-TESTS_C := $(filter-out $(NONTESTS),$(shell ls *.c 2>/dev/null | ${AWK} '{split($$0, parts, /[^A-Za-z_]+/); print parts[1]}' | sort | uniq))
-TESTS_CXX := $(filter-out $(NONTESTS),$(shell ls *.cpp 2>/dev/null | ${AWK} '{split($$0, parts, /[^A-Za-z_]+/); print parts[1]}' | sort | uniq))
+TESTS := $(filter-out $(NONTESTS), 								\
+		$(shell ls *.{c,cpp} 2>/dev/null | grep -v '^lib' | 				\
+			${AWK} '{split($$0, p, /[^A-Za-z_]+/); print p[1]}' | 			\
+			sort | uniq 								\
+		)										\
+)
+LIBS := $(filter-out $(NONTESTS), 								\
+		$(shell ls lib*.{c,cpp} 2>/dev/null | 						\
+			${AWK} '{split($$0, p, /[^A-Za-z_]+/); print substr(p[1], 4)}' |	\
+			sort | uniq 								\
+		)										\
+)
 
-# Derive the corresponding targets from the list
-BUILD_TARGETS = $(TESTS_C:%=build-%) $(TESTS_CXX:%=build-%)
-TEST_TARGETS = $(TESTS_C:%=test-%) $(TESTS_CXX:%=test-%)
+BUILD_TARGETS = $(TESTS:%=build-%)
+TEST_TARGETS = $(TESTS:%=test-%)
 
 .PHONY: all
-all: $(BUILD_TARGETS)
-	$(info ALL DEPS: $^)
+all: build
 
 .PHONY: clean
 clean:
 	$(call msg,CLEAN)
-	$(Q)rm -rf $(OUTPUT)
+	$(Q)$(RM) -rf $(OUTPUT)
 
-.PHONY: list-tests
-list-tests:
-	$(Q)$(foreach test,$(TESTS_C) $(TESTS_CXX), $(info $(test)))
+.PHONY: list
+list:
+	$(Q)$(foreach test,$(TESTS), $(info $(test)))
 
 .PHONY: build
 build: $(BUILD_TARGETS)
@@ -49,30 +67,59 @@ build: $(BUILD_TARGETS)
 .PHONY: test
 test: $(TEST_TARGETS)
 
-$(OUTPUT):
-	$(Q)mkdir -p $(OUTPUT)
+$(OUTPUT) $(OBJDIR):
+	$(Q)mkdir -p $@
 
-define C_BUILD_RULE
-$$(OUTPUT)/$(1): $$(wildcard $(1)*.[ch]) common.c common.h | $$(OUTPUT)
-	$$(call msg,CC,$$@)
-	$$(Q)$$(CC) $$(CFLAGS) -g $$(filter %.c, $$^) -o $$@
+$(OBJDIR)/%.o: %.c $(wildcard *.h) | $(OBJDIR)
+	$(call msg,CC,$@)
+	$(Q)$(CC) $(CFLAGS) -g -c $< -o $@
+
+$(OBJDIR)/%.opp: %.cpp $(wildcard *.h) | $(OBJDIR)
+	$(call msg,CXX,$@)
+	$(Q)$(CC) $(CXXFLAGS) -g -c $< -o $@
+
+ifeq ($(SHARED),1)
+define BUILD_RULE_LIB
+$$(OUTPUT)/$(1): $$(OUTPUT)/lib$(1).so
+
+$$(OUTPUT)/lib$(1).so: $$(patsubst %.c,$$(OBJDIR)/%.o,$$(wildcard lib$(1)*.c)) 			\
+		       $$(patsubst %.cpp,$$(OBJDIR)/%.opp,$$(wildcard lib$(1)*.cpp))		\
+		       | $$(OBJDIR)
+	$$(call msg,SHLIB,$$@)
+	$$(Q)$$(if $$(filter %.opp, $$^),							\
+		$$(CXX) $$(CXXFLAGS) $$(LDFLAGS) --shared -g $$^ -o $$@,			\
+		$$(CC) $$(CFLAGS) $$(LDFLAGS) --shared -g $$^ -o $$@)
+endef
+else # !SHARED
+define BUILD_RULE_LIB
+$$(OUTPUT)/$(1): $$(OUTPUT)/lib$(1).a
+
+$$(OUTPUT)/lib$(1).a: $$(patsubst %.c,$$(OBJDIR)/%.o,$$(wildcard lib$(1)*.c)) 			\
+		      $$(patsubst %.cpp,$$(OBJDIR)/%.opp,$$(wildcard lib$(1)*.cpp))		\
+		      | $$(OBJDIR)
+	$$(call msg,LIB,$$@)
+	$$(Q)$$(RM) -f $$@
+	$$(Q)$$(AR) rcs $$@ $$^
+
+endef
+endif # SHARED
+
+define BUILD_RULE
+$$(OUTPUT)/$(1): $$(patsubst %.c,$$(OBJDIR)/%.o,$$(wildcard $(1)*.c)) 				\
+		 $$(patsubst %.cpp,$$(OBJDIR)/%.opp,$$(wildcard $(1)*.cpp)) 			\
+		 $$(OBJDIR)/common.o | $$(OBJDIR)
+	$$(call msg,LINK,$$@)
+	$$(Q)$$(if $$(filter %.opp, $$^),							\
+		$$(CXX) $$(CXXFLAGS) $$(LDFLAGS) -g $$^ -o $$@,					\
+		$$(CC) $$(CFLAGS) $$(LDFLAGS) -g $$^ -o $$@)
 endef
 
-# Define build rule for each C test
-$(foreach test, $(TESTS_C), $(eval $(call C_BUILD_RULE,$(test))))
-
-define CXX_BUILD_RULE
-$$(OUTPUT)/$(1): $$(wildcard $(1)*.cpp $(1)*.h) common.c common.h | $$(OUTPUT)
-	$$(call msg,CXX,$$@)
-	$$(Q)$$(CXX) $$(CXXFLAGS) -g $$(filter %.cpp %.c, $$^) -o $$@
-endef
-
-# Define build rule for each C++ test
-$(foreach test, $(TESTS_CXX), $(eval $(call CXX_BUILD_RULE,$(test))))
+$(foreach test, $(TESTS), $(eval $(call BUILD_RULE,$(test))))
+$(foreach lib, $(LIBS), $(eval $(call BUILD_RULE_LIB,$(lib))))
 
 $(BUILD_TARGETS): build-%: $(OUTPUT)/%
 
 $(TEST_TARGETS): test-%: build-%
 	$(call msg,TESTING,$(patsubst test-%,%,$@))
 	$(Q)./run_test.sh $(OUTPUT)/$(patsubst test-%,%,$@)
-	$(call msg,TESTING,$(patsubst test-%,%,$@))
+	$(call msg,TESTED,$(patsubst test-%,%,$@))
