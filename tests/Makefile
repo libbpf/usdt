@@ -70,6 +70,9 @@ test: $(TEST_TARGETS)
 $(OUTPUT) $(OBJDIR):
 	$(Q)mkdir -p $@
 
+# arg_types.c generates "warning: unsupported size for integer register", silence it
+$(OBJDIR)/arg_types.o: CFLAGS += -w
+
 $(OBJDIR)/%.o: %.c $(wildcard *.h) | $(OBJDIR)
 	$(call msg,CC,$@)
 	$(Q)$(CC) $(CFLAGS) -g -c $< -o $@
