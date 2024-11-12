@@ -23,8 +23,8 @@ $(error OUTPUT variable cannot be empty)
 endif
 
 ifeq ($(SHARED),1)
-CFLAGS += -fPIC
-CXXFLAGS += -fPIC
+CFLAGS += -DSHARED -fPIC
+CXXFLAGS += -DSHARED -fPIC
 OBJDIR := $(OUTPUT)/shared
 else
 OBJDIR := $(OUTPUT)/static
@@ -124,5 +124,5 @@ $(BUILD_TARGETS): build-%: $(OUTPUT)/%
 
 $(TEST_TARGETS): test-%: build-%
 	$(call msg,TESTING,$(patsubst test-%,%,$@))
-	$(Q)./run_test.sh $(OUTPUT)/$(patsubst test-%,%,$@)
+	$(Q)./run_test.sh $(OUTPUT) $(patsubst test-%,%,$@)
 	$(call msg,TESTED,$(patsubst test-%,%,$@))

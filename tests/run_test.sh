@@ -13,20 +13,29 @@ awk=${AWK:-awk}
 readelf=${READELF:-readelf}
 bpftrace=${BPFTRACE:-bpftrace}
 
-TEST=$1
-TEST_USDTS_SPEC=$TEST.exp_usdts.txt
-TEST_USDTS_OUT=$TEST.act_usdts.txt
-TEST_PRE_SPEC=$TEST.exp_pre_out.txt
-TEST_PRE_OUT=$TEST.act_pre_out.txt
-TEST_BTSCRIPT=$TEST.bt
-TEST_BTOUT_SPEC=$TEST.exp_bt_out.txt
-TEST_BTOUT_RAW=$TEST.act_bt_out_raw.txt
-TEST_BTOUT=$TEST.act_bt_out.txt
-TEST_OUT_SPEC=$TEST.exp_out.txt
-TEST_OUT=$TEST.act_out.txt
+OUTPUT=$1
+TEST=$2
+TEST_BIN="$1/$2"
+TEST_LIB="$1/lib$2.so"
 
-$TEST -U > $TEST_USDTS_SPEC
-$readelf -n $TEST 2>/dev/null | $awk -f fetch-usdts.awk > $TEST_USDTS_OUT
+TEST_USDTS_SPEC=$TEST_BIN.exp_usdts.txt
+TEST_USDTS_OUT=$TEST_BIN.act_usdts.txt
+TEST_PRE_SPEC=$TEST_BIN.exp_pre_out.txt
+TEST_PRE_OUT=$TEST_BIN.act_pre_out.txt
+TEST_BTSCRIPT=$TEST_BIN.bt
+TEST_BTOUT_SPEC=$TEST_BIN.exp_bt_out.txt
+TEST_BTOUT_RAW=$TEST_BIN.act_bt_out_raw.txt
+TEST_BTOUT=$TEST_BIN.act_bt_out.txt
+TEST_OUT_SPEC=$TEST_BIN.exp_out.txt
+TEST_OUT=$TEST_BIN.act_out.txt
+
+$TEST_BIN -U > $TEST_USDTS_SPEC
+if [ "${SHARED:-0}" -eq 1 ] && [ -e "$TEST_LIB" ]; then
+	# append lib's USDT notes to USDTs from executable
+	$readelf -n $TEST_BIN $TEST_LIB 2>/dev/null | $awk -f fetch-usdts.awk > $TEST_USDTS_OUT
+else
+	$readelf -n $TEST_BIN 2>/dev/null | $awk -f fetch-usdts.awk > $TEST_USDTS_OUT
+fi
 if ! $awk -f check-match.awk $TEST_USDTS_SPEC $TEST_USDTS_OUT; then
 	echo "USDT SPECS MISMATCH:"
 	echo "EXPECTED:"
@@ -36,8 +45,8 @@ if ! $awk -f check-match.awk $TEST_USDTS_SPEC $TEST_USDTS_OUT; then
 	exit 1
 fi
 
-$TEST -t > $TEST_PRE_SPEC
-$TEST > $TEST_PRE_OUT
+$TEST_BIN -t > $TEST_PRE_SPEC
+$TEST_BIN > $TEST_PRE_OUT
 if ! $awk -f check-match.awk $TEST_PRE_SPEC $TEST_PRE_OUT; then
 	echo "TEST PRE-ATTACH OUTPUT MISMATCH:"
 	echo "EXPECTED:"
@@ -47,8 +56,12 @@ if ! $awk -f check-match.awk $TEST_PRE_SPEC $TEST_PRE_OUT; then
 	exit 1
 fi
 
-$TEST -b | $awk -v TEST=$TEST -f prepare-bt-script.awk > $TEST_BTSCRIPT
-$TEST -B > $TEST_BTOUT_SPEC
+if ! $TEST_BIN -b | $awk -v OUTPUT=$OUTPUT -v TEST=$TEST -f prepare-bt-script.awk > $TEST_BTSCRIPT; then
+	echo "FAILED TO GENERATE BPFTRACE SCRIPT:"
+	cat $TEST_BTSCRIPT;
+	exit 1
+fi
+$TEST_BIN -B > $TEST_BTOUT_SPEC
 
 if [ -s "$TEST_BTSCRIPT" ]; then
 	# start attaching bpftrace
@@ -83,7 +96,7 @@ if [ -s "$TEST_BTSCRIPT" ]; then
 	done
 
 	# get test output while bpftrace is attached
-	$TEST &>"$TEST_OUT"
+	$TEST_BIN &>"$TEST_OUT"
 
 	sudo kill -INT -$bt_pgid 2>/dev/null
 
@@ -99,7 +112,7 @@ if [ -s "$TEST_BTSCRIPT" ]; then
 		exit 1
 	fi
 
-	$TEST -T > $TEST_OUT_SPEC
+	$TEST_BIN -T > $TEST_OUT_SPEC
 	if ! $awk -f check-match.awk $TEST_OUT_SPEC $TEST_OUT; then
 		echo "TEST ATTACHED OUTPUT MISMATCH:"
 		echo "EXPECTED:"
