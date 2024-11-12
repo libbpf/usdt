@@ -84,9 +84,9 @@ $(OBJDIR)/%.opp: %.cpp $(wildcard *.h) | $(OBJDIR)
 
 ifeq ($(SHARED),1)
 define BUILD_RULE_LIB
-$$(OUTPUT)/$(1): $$(OUTPUT)/lib$(1).so
+$$(OBJDIR)/$(1): $$(OBJDIR)/lib$(1).so
 
-$$(OUTPUT)/lib$(1).so: $$(patsubst %.c,$$(OBJDIR)/%.o,$$(wildcard lib$(1)*.c)) 			\
+$$(OBJDIR)/lib$(1).so: $$(patsubst %.c,$$(OBJDIR)/%.o,$$(wildcard lib$(1)*.c)) 			\
 		       $$(patsubst %.cpp,$$(OBJDIR)/%.opp,$$(wildcard lib$(1)*.cpp))		\
 		       | $$(OBJDIR)
 	$$(call msg,SHLIB,$$@)
@@ -96,9 +96,9 @@ $$(OUTPUT)/lib$(1).so: $$(patsubst %.c,$$(OBJDIR)/%.o,$$(wildcard lib$(1)*.c)) 	
 endef
 else # !SHARED
 define BUILD_RULE_LIB
-$$(OUTPUT)/$(1): $$(OUTPUT)/lib$(1).a
+$$(OBJDIR)/$(1): $$(OBJDIR)/lib$(1).a
 
-$$(OUTPUT)/lib$(1).a: $$(patsubst %.c,$$(OBJDIR)/%.o,$$(wildcard lib$(1)*.c)) 			\
+$$(OBJDIR)/lib$(1).a: $$(patsubst %.c,$$(OBJDIR)/%.o,$$(wildcard lib$(1)*.c)) 			\
 		      $$(patsubst %.cpp,$$(OBJDIR)/%.opp,$$(wildcard lib$(1)*.cpp))		\
 		      | $$(OBJDIR)
 	$$(call msg,LIB,$$@)
@@ -109,7 +109,7 @@ endef
 endif # SHARED
 
 define BUILD_RULE
-$$(OUTPUT)/$(1): $$(patsubst %.c,$$(OBJDIR)/%.o,$$(wildcard $(1)*.c)) 				\
+$$(OBJDIR)/$(1): $$(patsubst %.c,$$(OBJDIR)/%.o,$$(wildcard $(1)*.c)) 				\
 		 $$(patsubst %.cpp,$$(OBJDIR)/%.opp,$$(wildcard $(1)*.cpp)) 			\
 		 $$(OBJDIR)/common.o | $$(OBJDIR)
 	$$(call msg,LINK,$$@)
@@ -121,9 +121,8 @@ endef
 $(foreach test, $(TESTS), $(eval $(call BUILD_RULE,$(test))))
 $(foreach lib, $(LIBS), $(eval $(call BUILD_RULE_LIB,$(lib))))
 
-$(BUILD_TARGETS): build-%: $(OUTPUT)/%
+$(BUILD_TARGETS): build-%: $(OBJDIR)/%
 
 $(TEST_TARGETS): test-%: build-%
-	$(call msg,TESTING,$(patsubst test-%,%,$@))
-	$(Q)./run_test.sh $(OUTPUT) $(patsubst test-%,%,$@)
-	$(call msg,TESTED,$(patsubst test-%,%,$@))
+	$(call msg,TESTING,$(if $(filter 1,$(SHARED)),shared/,static/)$(patsubst test-%,%,$@))
+	$(Q)./run_test.sh $(OBJDIR) $(patsubst test-%,%,$@)
