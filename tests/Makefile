@@ -5,6 +5,13 @@ BPFTRACE ?= bpftrace
 OUTPUT ?= .output
 SHARED ?= 0
 
+ifneq ($(CROSS_COMPILE),)
+CC = $(CROSS_COMPILE)gcc
+CXX = $(CROSS_COMPILE)g++
+LD = $(CROSS_COMPILE)ld
+AR = $(CROSS_COMPILE)ar
+endif
+
 export AWK READELF BPFTRACE
 
 ifeq ($(V),1)
