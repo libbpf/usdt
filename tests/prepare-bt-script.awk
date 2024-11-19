@@ -39,7 +39,7 @@
 
 	# Emit corresponding bpftrace probe spec:
 	# U:./test:group:name { printf("%s: some %s fmt %d spec %d\n", probe, str(arg0), (int)arg1, arg2 - 10); }
-	printf("U:%s:%s:%s { printf(\"%s%s:%s: %s\\n\"%s); }\n",
+	printf("usdt:%s:%s:%s { printf(\"%s%s:%s: %s\\n\"%s); }\n",
 	       path, group, name,
 	       probe[1] == "lib" ? "lib:" : "", group, name,
 	       fmt, args == "" ? "" : ", " args);

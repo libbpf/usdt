@@ -7,8 +7,7 @@ if [ "${V:-0}" -eq 1 ]; then
 	set -x
 fi
 
-TIMEOUT=10
-
+bpftrace_timeout=${BPFTRACE_TIMEOUT:-30}
 awk=${AWK:-awk}
 readelf=${READELF:-readelf}
 bpftrace=${BPFTRACE:-bpftrace}
@@ -75,7 +74,7 @@ if [ -s "$TEST_BTSCRIPT" ]; then
 		bt_elapsed=$(( $(date +%s) - bt_start ))
 		if grep -q "STARTED!" "$TEST_BTOUT_RAW"; then
 			break
-		elif [ "$bt_elapsed" -ge "$TIMEOUT" ]; then
+		elif [ "$bt_elapsed" -ge "$bpftrace_timeout" ]; then
 			sudo kill -KILL -$bt_pgid 2>/dev/null
 			echo "BPFTRACE STARTUP TIMEOUT!"
 			echo "BPFTRACE SCRIPT:"
@@ -91,14 +90,21 @@ if [ -s "$TEST_BTSCRIPT" ]; then
 			cat "$TEST_BTOUT_RAW"
 			exit 1
 		else
-			sleep 0.2
+			sleep 1
 		fi
+		echo "ITER"
 	done
+
+	echo "DONE 1"
 
 	# get test output while bpftrace is attached
 	$TEST_BIN &>"$TEST_OUT"
 
+	echo "DONE 2"
+
 	sudo kill -INT -$bt_pgid 2>/dev/null
+
+	echo "DONE 3"
 
 	$awk '/STARTED!/ {flag=1; next} /DONE!/ {flag=0} flag' $TEST_BTOUT_RAW > $TEST_BTOUT
 	if ! $awk -f check-match.awk $TEST_BTOUT_SPEC $TEST_BTOUT; then
