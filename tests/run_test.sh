@@ -90,7 +90,8 @@ if [ -s "$TEST_BTSCRIPT" ]; then
 			cat "$TEST_BTOUT_RAW"
 			exit 1
 		else
-			sleep 1
+			sleep 0.2
+			break;
 		fi
 		echo "ITER"
 	done
@@ -98,9 +99,17 @@ if [ -s "$TEST_BTSCRIPT" ]; then
 	echo "DONE 1"
 
 	# get test output while bpftrace is attached
-	$TEST_BIN &>"$TEST_OUT"
+	file $TEST_BIN
+	echo OUTPUT START
+	$TEST_BIN
+	echo OUTPUT END
+	timeout 10s $TEST_BIN 2>&1 | tee "$TEST_OUT"
 
 	echo "DONE 2"
+
+	echo "BTOUT RAW START"
+	cat "$TEST_BTOUT_RAW"
+	echo "BTOUT RAW END"
 
 	sudo kill -INT -$bt_pgid 2>/dev/null
 

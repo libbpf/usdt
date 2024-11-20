@@ -26,8 +26,8 @@ jobs:
     - name: Build (shared)
       run: make SHARED=1 -C tests -j$(nproc) build
 
-    - name: Test (static)
-      run: make V=1 BPFTRACE=$(realpath bpftrace) BPFTRACE_TIMEOUT=300 SHARED=0 -C tests test
-
     - name: Test (shared)
       run: make V=1 BPFTRACE=$(realpath bpftrace) BPFTRACE_TIMEOUT=300 SHARED=1 -C tests test
+
+    - name: Test (static)
+      run: make V=1 BPFTRACE=$(realpath bpftrace) BPFTRACE_TIMEOUT=300 SHARED=0 -C tests test
