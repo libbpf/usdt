@@ -372,7 +372,7 @@ struct usdt_sema { volatile unsigned short active; };
 	__usdt_asm1(994:	.balign 4)							\
 	__usdt_asm1(		.popsection)							\
 	__usdt_asm1(.ifndef _.stapsdt.base)							\
-	__usdt_asm5(		.pushsection .stapsdt.base,"aGR","progbits",.stapsdt.base,comdat)\
+	__usdt_asm5(		.pushsection .stapsdt.base,"aG","progbits",.stapsdt.base,comdat)\
 	__usdt_asm1(		.weak _.stapsdt.base)						\
 	__usdt_asm1(		.hidden _.stapsdt.base)						\
 	__usdt_asm1(_.stapsdt.base:)								\
