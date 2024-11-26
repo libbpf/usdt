@@ -1,14 +1,30 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include <stdio.h>
+#include <stdbool.h>
 #include "common.h"
 #include "../usdt.h"
 
 USDT_DEFINE_SEMA(exec_sema1); /* defined in the executable */
 USDT_DEFINE_SEMA(exec_sema2); /* defined in the executable */
 
-#ifndef SHARED
+#ifdef SHARED
+bool is_exec_sema1_active(void) { return USDT_SEMA_IS_ACTIVE(exec_sema1); }
+bool is_exec_sema2_active(void) { return USDT_SEMA_IS_ACTIVE(exec_sema2); }
+bool is_exec_imp_sema1_active(void) { return USDT_IS_ACTIVE(test, exec_imp_sema1); }
+bool is_exec_imp_sema2_active(void) { return USDT_IS_ACTIVE(test, exec_imp_sema2); }
+
+extern bool is_lib_sema1_active(void);
+extern bool is_lib_sema2_active(void);
+extern bool is_lib_imp_sema1_active(void);
+extern bool is_lib_imp_sema2_active(void);
+#else /* !SHARED */
 USDT_DECLARE_SEMA(lib_sema1); /* defined in the library */
 USDT_DECLARE_SEMA(lib_sema2); /* defined in the library */
+
+static bool is_lib_sema1_active(void) { return USDT_SEMA_IS_ACTIVE(lib_sema1); }
+static bool is_lib_sema2_active(void) { return USDT_SEMA_IS_ACTIVE(lib_sema2); }
+static bool is_lib_imp_sema1_active(void) { return USDT_IS_ACTIVE(test, lib_imp_sema1); }
+static bool is_lib_imp_sema2_active(void) { return USDT_IS_ACTIVE(test, lib_imp_sema2); }
 #endif
 
 extern void lib_func(void);
@@ -30,20 +46,22 @@ int main(int argc, char **argv)
 
 	/* Sharing USDT semaphores (both implicit and explicit) isn't
 	 * supported and doesn't work between shared libraries or between
-	 * executable and shared library. So the below "library" semaphore
+	 * executable and shared library. So the direct "library" semaphore
 	 * references only work if library is statically linked library, which
 	 * becomes part of the main executable (so there is, really, no
-	 * library involved as far as ELF and linker are concerned).
+	 * library involved as far as ELF and linker are concerned). So for
+	 * shared library case library provides an API returning the state of
+	 * the USDT, which we then use to check the state.
 	 */
 #ifndef SHARED
 	/* executable-side USDTs that use library-defined explicit semaphore */
 	USDT_WITH_EXPLICIT_SEMA(lib_sema1, test, lib_sema_exec_side1);
 	USDT_WITH_EXPLICIT_SEMA(lib_sema2, test, lib_sema_exec_side2);
-	printf("exec: lib_imp_sema1 is %s.\n", USDT_IS_ACTIVE(test, lib_imp_sema1) ? "ACTIVE" : "INACTIVE");
-	printf("exec: lib_imp_sema2 is %s.\n", USDT_IS_ACTIVE(test, lib_imp_sema2) ? "ACTIVE" : "INACTIVE");
-	printf("exec: lib_exp_sema1 is %s.\n", USDT_SEMA_IS_ACTIVE(lib_sema1) ? "ACTIVE" : "INACTIVE");
-	printf("exec: lib_exp_sema2 is %s.\n", USDT_SEMA_IS_ACTIVE(lib_sema2) ? "ACTIVE" : "INACTIVE");
 #endif /* SHARED */
+	printf("exec: lib_imp_sema1 is %s.\n", is_lib_imp_sema1_active() ? "ACTIVE" : "INACTIVE");
+	printf("exec: lib_imp_sema2 is %s.\n", is_lib_imp_sema2_active() ? "ACTIVE" : "INACTIVE");
+	printf("exec: lib_exp_sema1 is %s.\n", is_lib_sema1_active() ? "ACTIVE" : "INACTIVE");
+	printf("exec: lib_exp_sema2 is %s.\n", is_lib_sema2_active() ? "ACTIVE" : "INACTIVE");
 
 	lib_func();
 
@@ -82,7 +100,6 @@ const char *UNTRACED_OUTPUT =
 "exec: exec_imp_sema2 is INACTIVE.\n"
 "exec: exec_exp_sema1 is INACTIVE.\n"
 "exec: exec_exp_sema2 is INACTIVE.\n"
-#ifndef SHARED
 /* executable output */
 "exec: lib_imp_sema1 is INACTIVE.\n"
 "exec: lib_imp_sema2 is INACTIVE.\n"
@@ -93,7 +110,6 @@ const char *UNTRACED_OUTPUT =
 "lib: exec_imp_sema2 is INACTIVE.\n"
 "lib: exec_exp_sema1 is INACTIVE.\n"
 "lib: exec_exp_sema2 is INACTIVE.\n"
-#endif
 /* library output */
 "lib: lib_imp_sema1 is INACTIVE.\n"
 "lib: lib_imp_sema2 is INACTIVE.\n"
@@ -145,7 +161,6 @@ const char *TRACED_OUTPUT =
 "exec: exec_imp_sema2 is INACTIVE.\n"
 "exec: exec_exp_sema1 is ACTIVE.\n"
 "exec: exec_exp_sema2 is INACTIVE.\n"
-#ifndef SHARED
 /* executable output */
 "exec: lib_imp_sema1 is ACTIVE.\n"
 "exec: lib_imp_sema2 is INACTIVE.\n"
@@ -156,7 +171,6 @@ const char *TRACED_OUTPUT =
 "lib: exec_imp_sema2 is INACTIVE.\n"
 "lib: exec_exp_sema1 is ACTIVE.\n"
 "lib: exec_exp_sema2 is INACTIVE.\n"
-#endif
 /* library output */
 "lib: lib_imp_sema1 is ACTIVE.\n"
 "lib: lib_imp_sema2 is INACTIVE.\n"
