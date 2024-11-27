@@ -34,13 +34,13 @@ endif
 NONTESTS = tester common
 
 TESTS := $(filter-out $(NONTESTS), 								\
-		$(shell ls *.{c,cpp} 2>/dev/null | grep -v '^lib' | 				\
-			${AWK} '{split($$0, p, /[^A-Za-z_]+/); print p[1]}' | 			\
+		$(shell ls *.c *.cpp 2>/dev/null | grep -v '^lib' | 				\
+			${AWK} '{split($$0, p, /[^A-Za-z_]+/); print p[1]}' |			\
 			sort | uniq 								\
 		)										\
 )
 LIBS := $(filter-out $(NONTESTS), 								\
-		$(shell ls lib*.{c,cpp} 2>/dev/null | 						\
+		$(shell ls lib*.c lib*.cpp 2>/dev/null | 					\
 			${AWK} '{split($$0, p, /[^A-Za-z_]+/); print substr(p[1], 4)}' |	\
 			sort | uniq 								\
 		)										\
@@ -59,6 +59,7 @@ clean:
 
 .PHONY: list
 list:
+	$(call msg,TESTS,$@)
 	$(Q)$(foreach test,$(TESTS), $(info $(test)))
 
 .PHONY: build
