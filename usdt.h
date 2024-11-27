@@ -165,6 +165,7 @@ struct usdt_sema { volatile unsigned short active; };
 #define USDT_IS_ACTIVE(group, name) ({						\
 	extern struct usdt_sema __usdt_sema_name(group, name)			\
 		__usdt_asm_name(__usdt_sema_name(group, name));			\
+	__usdt_sema_implicit(__usdt_sema_name(group, name));			\
 	__usdt_sema_name(group, name).active > 0;				\
 })
 
