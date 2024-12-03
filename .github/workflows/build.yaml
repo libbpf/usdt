@@ -1,0 +1,48 @@
+name: Build and Test Multiple Architectures
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        architecture: [x86_64, arm64]
+        include:
+          - architecture: x86_64
+            cross_compiler:
+          - architecture: arm64
+            cross_compiler: aarch64-linux-gnu-
+
+    steps:
+    # Checkout code
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Set up dependencies
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          gcc \
+          g++ \
+          qemu-user-static \
+          gcc-aarch64-linux-gnu
+
+    # Run cross-compilation using make
+    - name: Cross-compile for ${{ matrix.architecture }}
+      run: |
+        make ARCH=${{ matrix.architecture }} CROSS_COMPILE=${{ matrix.cross_compiler }} build
+
+    # Optional: Test the binary with QEMU
+    #- name: Test binary on ${{ matrix.architecture }} using QEMU
+    #  run: |
+    #    sudo apt-get install -y qemu qemu-user
+    #    qemu-${{ matrix.architecture }}-static ./output_binary
+
