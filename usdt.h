@@ -311,7 +311,10 @@ struct usdt_sema { volatile unsigned short active; };
 #define __usdt_hash			#
 #define __usdt_str_(x)			#x
 #define __usdt_str(x)			__usdt_str_(x)
+
+#ifndef __usdt_asm_name
 #define __usdt_asm_name(name)		__asm__(__usdt_str(name))
+#endif
 
 #define __usdt_asm1(a)			__usdt_str(a) "\n"
 #define __usdt_asm2(a,b)		__usdt_str(a) "," __usdt_str(b) "\n"
@@ -331,9 +334,12 @@ struct usdt_sema { volatile unsigned short active; };
 #define __usdt_asm_str(x)	__usdt_asm_str_(x)
 
 /* "semaphoreless" USDT case */
+#ifndef __usdt_sema_none
 #define __usdt_sema_none(sema)
+#endif
 
 /* implicitly defined __usdt_sema__group__name semaphore (using weak symbols) */
+#ifndef __usdt_sema_implicit
 #define __usdt_sema_implicit(sema)								\
 	__asm__ __volatile__ (									\
 	__usdt_asm1(.ifndef sema)								\
@@ -348,10 +354,13 @@ struct usdt_sema { volatile unsigned short active; };
 	__usdt_asm1(		.popsection)							\
 	__usdt_asm1(.endif)									\
 	);
+#endif
 
 /* externally defined semaphore using USDT_DEFINE_SEMA() and passed explicitly by user */
+#ifndef __usdt_sema_explicit
 #define __usdt_sema_explicit(sema)								\
 	__asm__ __volatile__ ("" :: "m" (sema));
+#endif
 
 /* main USDT definition (nop and .note.stapsdt metadata) */
 #define __usdt_probe(group, name, sema_def, sema, ...) do {					\
