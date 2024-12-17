@@ -5,6 +5,10 @@ BPFTRACE ?= bpftrace
 OUTPUT ?= .output
 SHARED ?= 0
 
+CFLAGS += $(EXTRA_CFLAGS)
+CXXFLAGS += $(EXTRA_CXXFLAGS)
+LDFLAGS += $(EXTRA_LDFLAGS)
+
 export AWK READELF BPFTRACE
 
 ifeq ($(V),1)
@@ -80,7 +84,7 @@ $(OBJDIR)/%.o: %.c $(wildcard *.h) | $(OBJDIR)
 
 $(OBJDIR)/%.opp: %.cpp $(wildcard *.h) | $(OBJDIR)
 	$(call msg,CXX,$@)
-	$(Q)$(CC) $(CXXFLAGS) -g -c $< -o $@
+	$(Q)$(CXX) $(CXXFLAGS) -g -c $< -o $@
 
 ifeq ($(SHARED),1)
 define BUILD_RULE_LIB
