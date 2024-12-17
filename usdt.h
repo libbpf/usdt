@@ -86,6 +86,14 @@
 #define USDT_MINOR_VERSION 1
 #define USDT_PATCH_VERSION 0
 
+/* C++20 and C23 added __VA_OPT__ as a standard replacement for non-standard `##__VA_ARGS__` extension */
+#if (defined(__STDC_VERSION__) && __STDC_VERSION__ > 201710L) || (defined(__cplusplus) && __cplusplus > 201703L)
+#define __usdt_va_opt 1
+#define __usdt_va_args(...) __VA_OPT__(,) __VA_ARGS__
+#else
+#define __usdt_va_args(...) , ##__VA_ARGS__
+#endif
+
 /*
  * Trigger USDT with `group`:`name` identifier and pass through `args` as its
  * arguments. Zero arguments are acceptable as well. No USDT semaphore is
@@ -97,8 +105,13 @@
  * record their locations in CPU registers or in memory for tracing tooling to
  * be able to access them, if necessary.
  */
+#ifdef __usdt_va_opt
+#define USDT(group, name, ...)							\
+	__usdt_probe(group, name, __usdt_sema_none, 0 __VA_OPT__(,) __VA_ARGS__)
+#else
 #define USDT(group, name, ...)							\
 	__usdt_probe(group, name, __usdt_sema_none, 0, ##__VA_ARGS__)
+#endif
 
 /*
  * Trigger USDT with `group`:`name` identifier and pass through `args` as its
@@ -139,10 +152,17 @@
  * called out here. (Static libraries become a part of final executable, once
  * linked by linker, so the above considerations don't apply to them.)
  */
+#ifdef __usdt_va_opt
+#define USDT_WITH_SEMA(group, name, ...)					\
+	__usdt_probe(group, name,						\
+		     __usdt_sema_implicit, __usdt_sema_name(group, name)	\
+		     __VA_OPT__(,) __VA_ARGS__)
+#else
 #define USDT_WITH_SEMA(group, name, ...)					\
 	__usdt_probe(group, name,						\
 		     __usdt_sema_implicit, __usdt_sema_name(group, name),	\
 		     ##__VA_ARGS__)
+#endif
 
 struct usdt_sema { volatile unsigned short active; };
 
@@ -266,8 +286,13 @@ struct usdt_sema { volatile unsigned short active; };
  * Semaphore is defined with the help of USDT_DEFINE_SEMA() macro and can be
  * checked whether active with USDT_SEMA_IS_ACTIVE().
  */
+#ifdef __usdt_va_opt
 #define USDT_WITH_EXPLICIT_SEMA(sema, group, name, ...)				\
 	__usdt_probe(group, name, __usdt_sema_explicit, USDT_SEMA(sema), ##__VA_ARGS__)
+#else
+#define USDT_WITH_EXPLICIT_SEMA(sema, group, name, ...)				\
+	__usdt_probe(group, name, __usdt_sema_explicit, USDT_SEMA(sema) __VA_OPT__(,) __VA_ARGS__)
+#endif
 
 /*
  * Adjustable implementation aspects
@@ -304,9 +329,14 @@ struct usdt_sema { volatile unsigned short active; };
 #ifndef __usdt_nth
 #define __usdt_nth(_, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, N, ...) N
 #endif
+
 #ifndef __usdt_narg
+#ifdef __usdt_va_opt
+#define __usdt_narg(...) __usdt_nth(_ __VA_OPT__(,) __VA_ARGS__, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+#else
 #define __usdt_narg(...) __usdt_nth(_, ##__VA_ARGS__, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 #endif
+#endif /* __usdt_narg */
 
 #define __usdt_hash			#
 #define __usdt_str_(x)			#x
