@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BSD-2-Clause
+#define _POSIX_C_SOURCE 199309L
+#include <time.h>
 #include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <time.h>
 #include "common.h"
 #include "../usdt.h"
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include <stdio.h>
 #include <stddef.h>
+#include <sys/types.h>
 #include "common.h"
 #include "../usdt.h"
 
