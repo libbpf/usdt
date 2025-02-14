@@ -5,7 +5,6 @@ function glob_to_regex(pat)
 	gsub(/\\/, "\\\\", pat);		# Escape backslashes
 	gsub(/\./, "\\.", pat);			# . -> \. (escape dot)
 	gsub(/\+/, "\\+", pat);			# + -> \+ (escape plus)
-	gsub(/\$/, "\\$", pat);			# $ -> \$ (escape dollar sign)
 	gsub(/\^/, "\\^", pat);			# ^ -> \^ (escape caret)
 	gsub(/\(/, "\\(", pat);			# ( -> \(
 	gsub(/\)/, "\\)", pat);			# ) -> \)
@@ -13,6 +12,7 @@ function glob_to_regex(pat)
 	gsub(/\[([^\]]*)\]/, "[\\1]", pat);	# [] -> []
 	gsub(/\*/, ".*", pat);			# * -> .*
 	gsub(/\?/, ".", pat);			# ? -> .
+	gsub(/\$/, "\\$?", pat);		# $ -> \$ (escape dollar sign and make it optional)
 	pat = sprintf("^%s$", pat);
 	return pat;
 }

@@ -65,7 +65,7 @@ $TEST_BIN -B > $TEST_BTOUT_SPEC
 
 if [ -s "$TEST_BTSCRIPT" ]; then
 	# start attaching bpftrace
-	setsid sudo $bpftrace -B none "$TEST_BTSCRIPT" >"$TEST_BTOUT_RAW" 2>&1 &
+	setsid sudo $bpftrace ${V:+-v} -v -B none "$TEST_BTSCRIPT" >"$TEST_BTOUT_RAW" 2>&1 &
 	bt_pid=$!
 	bt_pgid="$(ps -opgid= "$bt_pid" | tr -d ' ')"
 

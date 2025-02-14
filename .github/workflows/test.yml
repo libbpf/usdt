@@ -7,25 +7,40 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build-and-test:
 
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runs-on: [ 'ubuntu-latest', 'ubuntu-24.04-arm' ]
+        shared: [ 0, 1 ]
+        compiler:
+          - { name: 'gcc', version: 11 }
+          - { name: 'gcc', version: 12 }
+          - { name: 'gcc', version: 13 }
+          - { name: 'gcc', version: 14 }
+          - { name: 'llvm', version: 17 }
+          - { name: 'llvm', version: 18 }
+          - { name: 'llvm', version: 19 }
+
+    runs-on: ${{ matrix.runs-on }}
+
+    name: ${{ endsWith(matrix.runs-on, '-arm') && 'arm64' || 'x86_64' }} SHARED=${{ matrix.shared }} ${{ matrix.compiler.name }}-${{ matrix.compiler.version }}
+
+    env:
+      ARCH: ${{ endsWith(matrix.runs-on, '-arm') && 'arm64' || 'x86_64' }}
+      COMPILER: ${{ matrix.compiler.name }}
+      COMPILER_VERSION: ${{ matrix.compiler.version }}
+      SHARED: ${{ matrix.shared }}
 
     steps:
     - uses: actions/checkout@v4
 
     - name: Install prerequisites
-      run: sudo .github/scripts/setup.sh
+      run: sudo -E .github/scripts/setup.sh
 
-    - name: Build (static)
-      run: make SHARED=0 -C tests -j$(nproc) build
+    - name: Build SHARED=${{ matrix.shared }}
+      run: .github/scripts/build.sh
 
-    - name: Build (shared)
-      run: make SHARED=1 -C tests -j$(nproc) build
-
-    - name: Test (static)
-      run: make SHARED=0 -C tests test
-
-    - name: Test (shared)
-      run: make SHARED=1 -C tests test
-
+    - name: Test SHARED=${{ matrix.shared }}
+      run: make -C tests test
