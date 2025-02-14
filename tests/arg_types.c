@@ -122,7 +122,9 @@ const char *BPFTRACE_SCRIPT =
 	str(arg0),								\
 	*(int32 *)(arg1 + 0), *(int32 *)(arg1 + 4), *(int32 *)(arg1 + 8) }\n"
 "test:struct_by_val_reg { arg0=%hhu arg1=%u -> arg0, arg1 }\n"
+#ifndef __clang__ /* bpftrace generates a bad BPF program in this case */
 "test:struct_by_val_reg_pair { s.x=%llx -> arg0 }\n" /* captures first half of a struct */
+#endif
 /* bpftrace can't handle 24-byte struct-by-value case in struct_by_val_stack */
 "test:structs_by_ref { a=(%hhu) b=(%d) c=(%lld,%lld) d=(%lld,%lld,%lld) ->	\
 	*(uint8 *)arg0, *(int32 *)arg1,						\
@@ -138,6 +140,8 @@ const char *BPFTRACE_OUTPUT =
 "test:ptrs: arg0=0x* arg1='some literal' arg2=&42\n"
 "test:arrs: arg0='STRING' arg1=(-100,-200,-300)\n"
 "test:struct_by_val_reg: arg0=1 arg1=2\n"
+#ifndef __clang__
 "test:struct_by_val_reg_pair: s.x=3\n"
+#endif
 "test:structs_by_ref: a=(1) b=(2) c=(3,4) d=(4,5,6)\n"
 ;

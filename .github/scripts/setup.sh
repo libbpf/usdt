@@ -2,20 +2,25 @@
 
 set -euo pipefail
 
-BPFTRACE_VERSION=${BPFTRACE_VERSION:-0.22.1}
-
 # Assume sudo in this script
+GITHUB_WORKSPACE=${GITHUB_WORKSPACE:-$(pwd)}
+BPFTRACE_VERSION=${BPFTRACE_VERSION:-0.22.1}
+COMPILER=${COMPILER:-gcc}
+COMPILER_VERSION=${COMPILER_VERSION:-13}
 
-# Install dependencies
-apt update && apt install -y make file gawk libfuse2t64
+# Install pre-requisites
+apt-get update -y
+DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata
+apt-get install -y curl file gawk gnupg libfuse2t64 lsb-release make software-properties-common sudo wget
 
-# Download bpftrace release
-BIN_DIR=/usr/local/bin
-mkdir -p $BIN_DIR
-curl -L -o bpftrace https://github.com/bpftrace/bpftrace/releases/download/v${BPFTRACE_VERSION}/bpftrace
-chmod +x bpftrace
-mv bpftrace $BIN_DIR
-bpftrace --version
+# Install CC
+if [ "$COMPILER" == "llvm" ]; then
+        curl -O https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        ./llvm.sh ${COMPILER_VERSION}
+else
+        apt-get install -y gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION}
+fi
 
-# mount tracefs to avoid warnings from bpftrace
-grep -q tracefs /proc/mounts || mount -t tracefs tracefs /sys/kernel/tracing
+${GITHUB_WORKSPACE}/.github/scripts/install-bpftrace.sh
+
