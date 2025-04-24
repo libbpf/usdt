@@ -76,7 +76,9 @@ $(OUTPUT) $(OBJDIR):
 
 # arg_types.c/cxx_arg_types.cpp generate "warning: unsupported size for integer register"
 $(OBJDIR)/arg_types.o: CFLAGS += -w
+$(OBJDIR)/long_nop_usdt.o: CFLAGS += -w
 $(OBJDIR)/cxx_arg_types.opp: CXXFLAGS += -w
+$(OBJDIR)/cxx_long_nop_usdt.opp: CXXFLAGS += -w
 
 $(OBJDIR)/%.o: %.c $(wildcard *.h) | $(OBJDIR)
 	$(call msg,CC,$@)
