@@ -348,11 +348,20 @@ struct usdt_sema { volatile unsigned short active; };
 #define __usdt_asm_name(name)		__asm__(__usdt_str(name))
 #endif
 
-#define __usdt_asm1(a)			__usdt_str(a) "\n"
-#define __usdt_asm2(a,b)		__usdt_str(a) "," __usdt_str(b) "\n"
-#define __usdt_asm3(a,b,c)		__usdt_str(a) "," __usdt_str(b) "," __usdt_str(c) "\n"
-#define __usdt_asm5(a,b,c,d,e)		__usdt_str(a) "," __usdt_str(b) "," __usdt_str(c) "," \
-					__usdt_str(d) "," __usdt_str(e) "\n"
+#define __usdt_asm0()		"\n"
+#define __usdt_asm1(x)		__usdt_str(x) "\n"
+#define __usdt_asm2(x, ...)	__usdt_str(x) "," __usdt_asm1(__VA_ARGS__)
+#define __usdt_asm3(x, ...)	__usdt_str(x) "," __usdt_asm2(__VA_ARGS__)
+#define __usdt_asm4(x, ...)	__usdt_str(x) "," __usdt_asm3(__VA_ARGS__)
+#define __usdt_asm5(x, ...)	__usdt_str(x) "," __usdt_asm4(__VA_ARGS__)
+#define __usdt_asm6(x, ...)	__usdt_str(x) "," __usdt_asm5(__VA_ARGS__)
+#define __usdt_asm7(x, ...)	__usdt_str(x) "," __usdt_asm6(__VA_ARGS__)
+#define __usdt_asm8(x, ...)	__usdt_str(x) "," __usdt_asm7(__VA_ARGS__)
+#define __usdt_asm9(x, ...)	__usdt_str(x) "," __usdt_asm8(__VA_ARGS__)
+#define __usdt_asm10(x, ...)	__usdt_str(x) "," __usdt_asm9(__VA_ARGS__)
+#define __usdt_asm11(x, ...)	__usdt_str(x) "," __usdt_asm10(__VA_ARGS__)
+#define __usdt_asm12(x, ...)	__usdt_str(x) "," __usdt_asm11(__VA_ARGS__)
+#define __usdt_asm(...)		__usdt_apply(__usdt_asm, __usdt_narg(__VA_ARGS__))(__VA_ARGS__)
 
 #ifdef __LP64__
 #define __usdt_asm_addr		.8byte
@@ -398,7 +407,7 @@ struct usdt_sema { volatile unsigned short active; };
 #define __usdt_probe(group, name, sema_def, sema, ...) do {					\
 	sema_def(sema)										\
 	__asm__ __volatile__ (									\
-	__usdt_asm1(990:	USDT_NOP)							\
+	__usdt_asm( 990:	USDT_NOP)							\
 	__usdt_asm3(		.pushsection .note.stapsdt, "", "note")				\
 	__usdt_asm1(		.balign 4)							\
 	__usdt_asm3(		.4byte 992f-991f,994f-993f,3)					\
